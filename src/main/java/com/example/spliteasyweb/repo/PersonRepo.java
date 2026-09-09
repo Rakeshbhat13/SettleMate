@@ -12,6 +12,7 @@ public interface PersonRepo extends JpaRepository<PersonEntity, Long> {
   List<PersonEntity> findByGroupIdOrderByNameAsc(Long groupId);
   boolean existsByGroupIdAndName(Long groupId, String name);
   Optional<PersonEntity> findByGroupIdAndName(Long groupId, String name);
+  Optional<PersonEntity> findByIdAndGroupId(Long id, Long groupId);
 
   @Modifying
   @Transactional

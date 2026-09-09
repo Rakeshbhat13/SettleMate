@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title th:text="${g.name} + ' — SplitEasy'">Group</title>
+    <title th:text="${g.name} + ' — SettleMate'">Group — SettleMate</title>
     <link rel="stylesheet" th:href="@{/styles.css}" />
   </head>
 
@@ -11,8 +11,9 @@
     <div class="container">
       <header class="header">
         <div class="brand">
-          <a href="/" class="logo" title="Home"></a>
+          <a href="/" class="logo" title="SettleMate home"></a>
           <div>
+            <p class="eyebrow">SETTLEMATE WORKSPACE</p>
             <h1 th:text="${g.name}">Group</h1>
           </div>
         </div>
@@ -36,10 +37,33 @@
         </div>
       </header>
 
+      <section class="summary-grid">
+        <article class="summary-card summary-card-primary">
+          <span>Total spent</span>
+          <strong th:text="${'₹' + #numbers.formatDecimal(summary.totalSpent,1,2)}">₹0.00</strong>
+          <small th:text="${summary.expenseCount + ' expenses recorded'}">0 expenses recorded</small>
+        </article>
+        <article class="summary-card">
+          <span>Members</span>
+          <strong th:text="${summary.memberCount}">0</strong>
+          <small>People sharing this workspace</small>
+        </article>
+        <article class="summary-card">
+          <span>Average expense</span>
+          <strong th:text="${'₹' + #numbers.formatDecimal(summary.averageExpense,1,2)}">₹0.00</strong>
+          <small th:text="${'Highest: ₹' + #numbers.formatDecimal(summary.highestExpense,1,2)}">Highest: ₹0.00</small>
+        </article>
+        <article class="summary-card" th:if="${g.budget != null}">
+          <span>Budget progress</span>
+          <strong th:text="${#numbers.formatDecimal(summary.budgetPercent,1,1) + '%'}">0.0%</strong>
+          <small th:text="${'₹' + #numbers.formatDecimal(summary.budgetRemaining,1,2) + ' remaining'}">₹0.00 remaining</small>
+        </article>
+      </section>
+
       <div class="grid grid-2">
         <!-- People -->
         <section class="card">
-          <h2 class="section-title">People</h2>
+          <div class="section-heading"><div><p class="eyebrow">GROUP ROSTER</p><h2 class="section-title">People</h2></div><span class="status-dot">Active</span></div>
           <form th:action="@{|/g/${g.slug}/people|}" method="post" class="row">
             <input name="name" placeholder="Name (Ana / Martin)" required />
             <button class="btn">Add</button>
@@ -75,7 +99,7 @@
 
         <!-- Add expense -->
         <section class="card">
-          <h2 class="section-title">Add Expense</h2>
+          <div class="section-heading"><div><p class="eyebrow">NEW ENTRY</p><h2 class="section-title">Add expense</h2></div></div>
           <form
             id="expenseForm"
             th:action="@{|/g/${g.slug}/expenses|}"
@@ -115,6 +139,30 @@
               required
             />
 
+            <div class="form-grid">
+              <label>
+                <span>Category</span>
+                <select name="category">
+                  <option value="FOOD">Food</option>
+                  <option value="TRAVEL">Travel</option>
+                  <option value="ACCOMMODATION">Accommodation</option>
+                  <option value="TRANSPORT">Transport</option>
+                  <option value="SHOPPING">Shopping</option>
+                  <option value="ENTERTAINMENT">Entertainment</option>
+                  <option value="BILLS">Bills</option>
+                  <option value="OTHER" selected>Other</option>
+                </select>
+              </label>
+              <label>
+                <span>Split method</span>
+                <select name="splitType" id="splitType">
+                  <option value="EQUAL" selected>Equal split</option>
+                  <option value="PERCENTAGE">Percentage split</option>
+                  <option value="EXACT">Exact amounts</option>
+                </select>
+              </label>
+            </div>
+
             <div class="row" style="width: 100%">
               <input
                 id="participantsInput"
@@ -145,7 +193,7 @@
 
         <!-- Expenses -->
         <section class="card" style="margin-top: 16px">
-          <h2 class="section-title">Expenses</h2>
+          <div class="section-heading"><div><p class="eyebrow">LEDGER</p><h2 class="section-title">Recent expenses</h2></div><a class="link" th:href="@{|/g/${g.slug}/export/expenses.csv|}">Download CSV →</a></div>
           <div th:if="${#lists.isEmpty(expenses)}">No expenses recorded.</div>
           <div th:unless="${#lists.isEmpty(expenses)}">
             <table class="table">
@@ -155,6 +203,8 @@
                   <th>Expense</th>
                   <th>Paid By</th>
                   <th>Amount (₹)</th>
+                  <th>Category</th>
+                  <th>Split</th>
                   <th>Participants</th>
                   <th>Date</th>
                   <th>Action</th>
@@ -170,6 +220,8 @@
                   <td th:text="${'₹' + #numbers.formatDecimal(e.amount,1,2)}">
                     ₹0.00
                   </td>
+                  <td th:text="${e.category != null ? e.category.label : 'Other'}">Other</td>
+                  <td th:text="${e.splitType != null ? e.splitType : 'EQUAL'}">EQUAL</td>
                   <td
                     th:text="${#strings.replace(e.participantsCsv, ',', ', ')}"
                   >
@@ -200,7 +252,7 @@
 
         <!-- Balances -->
         <section class="card" style="margin-top: 16px">
-          <h2 class="section-title">Balances and Settlement</h2>
+          <div class="section-heading"><div><p class="eyebrow">SETTLEMENT</p><h2 class="section-title">Balances and settlement plan</h2></div><span class="step-pill" th:text="${#lists.size(txs) + ' transfers'}">0 transfers</span></div>
           <div class="grid grid-2">
             <div>
               <h3 class="section-title">Balances</h3>
@@ -233,7 +285,17 @@
           </div>
         </section>
 
-        <p class="footer">SplitEasy - Simple expense splitting</p>
+        <section class="card analytics-card" th:if="${!summary.spendingByCategory.isEmpty()}">
+          <div class="section-heading"><div><p class="eyebrow">ANALYTICS</p><h2 class="section-title">Spending by category</h2></div></div>
+          <div class="category-list">
+            <div class="category-row" th:each="entry : ${summary.spendingByCategory}">
+              <span th:text="${entry.key.label}">Food</span>
+              <strong th:text="${'₹' + #numbers.formatDecimal(entry.value,1,2)}">₹0.00</strong>
+            </div>
+          </div>
+        </section>
+
+        <p class="footer">SettleMate · Smart Group Expense Management &amp; Settlement</p>
       </div>
     </div>
 

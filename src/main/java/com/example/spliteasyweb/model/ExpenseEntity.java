@@ -34,6 +34,14 @@ public class ExpenseEntity {
     @Column(name = "payers_csv", nullable = true, length = 1000)
     private String payersCsv;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private ExpenseCategory category = ExpenseCategory.OTHER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "split_type", nullable = false, length = 32)
+    private SplitType splitType = SplitType.EQUAL;
+
     // --- getters/setters ---
 
     public Long getId() { return id; }
@@ -56,4 +64,10 @@ public class ExpenseEntity {
 
     public String getPayersCsv() { return payersCsv; }
     public void setPayersCsv(String payersCsv) { this.payersCsv = payersCsv; }
+
+    public ExpenseCategory getCategory() { return category; }
+    public void setCategory(ExpenseCategory category) { this.category = category == null ? ExpenseCategory.OTHER : category; }
+
+    public SplitType getSplitType() { return splitType; }
+    public void setSplitType(SplitType splitType) { this.splitType = splitType == null ? SplitType.EQUAL : splitType; }
 }

@@ -3,10 +3,13 @@ package com.example.spliteasyweb.web;
 import com.example.spliteasyweb.model.ExpenseEntity;
 import com.example.spliteasyweb.model.GroupEntity;
 import com.example.spliteasyweb.model.PersonEntity;
+import com.example.spliteasyweb.model.ExpenseCategory;
+import com.example.spliteasyweb.model.SplitType;
 import com.example.spliteasyweb.repo.ExpenseRepo;
 import com.example.spliteasyweb.repo.GroupRepo;
 import com.example.spliteasyweb.repo.PersonRepo;
 import com.example.spliteasyweb.service.SettlementService;
+import com.example.spliteasyweb.service.AnalyticsService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -15,6 +18,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.*;
@@ -27,19 +31,23 @@ public class GroupController {
     private final PersonRepo people;
     private final ExpenseRepo expenses;
     private final SettlementService settlementService;
+    private final AnalyticsService analyticsService;
 
     public GroupController(GroupRepo groups, PersonRepo people, ExpenseRepo expenses,
-                           SettlementService settlementService) {
+                           SettlementService settlementService, AnalyticsService analyticsService) {
         this.groups = groups;
         this.people = people;
         this.expenses = expenses;
         this.settlementService = settlementService;
+        this.analyticsService = analyticsService;
     }
 
     // Crear grupo (desde el home)
     @PostMapping("/groups")
     @Transactional
-    public String createGroup(@RequestParam String name, HttpSession session) {
+    public String createGroup(@RequestParam String name,
+                              @RequestParam(required = false) BigDecimal budget,
+                              HttpSession session) {
         String normalized = name == null ? "" : name.trim();
         if (normalized.isEmpty())
             return "redirect:/";
@@ -55,6 +63,10 @@ public class GroupController {
         GroupEntity g = new GroupEntity();
         g.setName(normalized);
         g.setSlug(slug);
+        if (budget != null && budget.signum() > 0) {
+            g.setBudget(budget.setScale(2, RoundingMode.HALF_UP));
+        }
+        g.setOwnerSession(session.getId());
         groups.save(g);
 
         // guardar recientes en sesión (opcional)
@@ -79,12 +91,14 @@ public class GroupController {
 
         var balances = settlementService.balances(exps);
         var txs = settlementService.settle(balances);
+        var summary = analyticsService.summarize(exps, ppl.size(), g.getBudget());
 
         model.addAttribute("g", g);
         model.addAttribute("people", ppl);
         model.addAttribute("expenses", exps);
         model.addAttribute("balances", balances);
         model.addAttribute("txs", txs);
+        model.addAttribute("summary", summary);
         return "group";
     }
 
@@ -111,7 +125,8 @@ public class GroupController {
     @PostMapping("/g/{slug}/people/{id}/delete")
     @Transactional
     public String deletePerson(@PathVariable String slug, @PathVariable Long id) {
-        people.deleteById(id);
+        GroupEntity g = groups.findBySlug(slug).orElseThrow();
+        people.findByIdAndGroupId(id, g.getId()).ifPresent(people::delete);
         return "redirect:/g/" + slug;
     }
 
@@ -123,7 +138,9 @@ public class GroupController {
                              @RequestParam String amount,
                              // El front manda payers como CSV y participants como múltiples inputs name=participants
                              @RequestParam(name = "payers", required = false) String payersCsvRaw,
-                             @RequestParam(name = "participants", required = false) List<String> participantsList) {
+                             @RequestParam(name = "participants", required = false) List<String> participantsList,
+                             @RequestParam(name = "category", required = false) ExpenseCategory category,
+                             @RequestParam(name = "splitType", required = false) SplitType splitType) {
         GroupEntity g = groups.findBySlug(slug).orElseThrow();
 
         var ppl = people.findByGroupIdOrderByNameAsc(g.getId());
@@ -137,6 +154,8 @@ public class GroupController {
         e.setTitle(title == null ? "" : title.trim());
         e.setAmount(safeBigDecimal(amount));
         e.setDate(LocalDate.now());
+        e.setCategory(category);
+        e.setSplitType(splitType);
         e.setParticipantsCsv(joinUniqueCanonical(participantsCsv, canon));
         e.setPayersCsv(joinUniqueCanonical(payersCsv, canon));
 
@@ -147,14 +166,16 @@ public class GroupController {
     @PostMapping("/g/{slug}/expenses/{id}/delete")
     @Transactional
     public String deleteExpense(@PathVariable String slug, @PathVariable Long id) {
-        expenses.deleteById(id);
+        GroupEntity g = groups.findBySlug(slug).orElseThrow();
+        expenses.findByIdAndGroupId(id, g.getId()).ifPresent(expenses::delete);
         return "redirect:/g/" + slug;
     }
 
     @PostMapping("/g/{slug}/expenses/{id}/liquidate")
     @Transactional
     public String liquidateExpense(@PathVariable String slug, @PathVariable Long id) {
-        expenses.deleteById(id);
+        GroupEntity g = groups.findBySlug(slug).orElseThrow();
+        expenses.findByIdAndGroupId(id, g.getId()).ifPresent(expenses::delete);
         return "redirect:/g/" + slug;
     }
 

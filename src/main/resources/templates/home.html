@@ -3,65 +3,91 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>My Groups — SplitEasy</title>
+    <title>Dashboard — SettleMate</title>
     <link rel="stylesheet" th:href="@{/styles.css}" />
   </head>
   <body>
     <div class="container">
       <header class="header">
         <div class="brand">
-          <a href="/" class="logo" title="Home"></a>
+          <a href="/" class="logo" title="SettleMate home"></a>
           <div>
-            <h1>SplitEasy</h1>
-            <small>Split expenses with friends</small>
+            <p class="eyebrow">SETTLEMATE</p>
+            <h1>Shared money, settled clearly.</h1>
+            <small>Smart Group Expense Management &amp; Settlement</small>
           </div>
         </div>
       </header>
 
-      <section class="card">
-        <h2 class="section-title">Create Group</h2>
+      <main class="dashboard-shell">
+        <section class="intro-panel">
+          <div>
+            <p class="eyebrow">WORKSPACE</p>
+            <h2>Start a group that stays balanced.</h2>
+            <p class="muted">Track shared spending, see who owes what, and leave the awkward math to SettleMate.</p>
+          </div>
+          <div class="metric-highlight"><strong th:text="${#lists.size(recentGroups)}">0</strong><span>recent groups</span></div>
+        </section>
+
+        <section class="card create-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">NEW WORKSPACE</p>
+            <h2 class="section-title">Create a group</h2>
+          </div>
+          <span class="step-pill">01 / 01</span>
+        </div>
         <form action="/groups" method="post" class="row">
           <input
             name="name"
-            placeholder="Enter group name"
+            placeholder="Trip to Jaipur, apartment bills..."
             required
             style="flex: 1"
           />
-          <button class="btn">Create</button>
+          <input name="budget" type="number" min="0.01" step="0.01" placeholder="Budget (optional)" />
+          <button class="btn">Create workspace <span aria-hidden="true">→</span></button>
         </form>
-      </section>
+        </section>
 
-      <section class="card" style="margin-top: 16px">
-        <h2 class="section-title">Your Groups</h2>
-        <div th:if="${#lists.isEmpty(groups)}">
-          You haven't created any groups yet.
+        <section class="card groups-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">RECENT ACTIVITY</p>
+            <h2 class="section-title">Your groups</h2>
+          </div>
+          <span class="status-dot">Live</span>
         </div>
-        <div th:unless="${#lists.isEmpty(groups)}">
+        <div class="empty-state" th:if="${#lists.isEmpty(recentGroups)}">
+          <div class="empty-icon">＋</div>
+          <strong>Your workspace is ready for its first group.</strong>
+          <span>Create one above, then invite everyone who needs to settle up.</span>
+        </div>
+        <div th:unless="${#lists.isEmpty(recentGroups)}">
           <table class="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Link</th>
+                <th>Group link</th>
+                <th>Open</th>
               </tr>
             </thead>
             <tbody>
-              <tr th:each="g : ${groups}">
-                <td th:text="${g.name}">Grupo</td>
+              <tr th:each="slug : ${recentGroups}">
+                <td><span class="group-mark">SM</span><span th:text="${slug}">group</span></td>
                 <td>
                   <a
                     class="link"
-                    th:href="@{|/g/${g.slug}|}"
-                    th:text="@{|/g/${g.slug}|}"
-                    >/g/abc</a
+                    th:href="@{|/g/${slug}|}"
+                    >Open workspace <span aria-hidden="true">→</span></a
                   >
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-      </section>
+        </section>
+      </main>
 
-      <p class="footer">SplitEasy - Simple expense splitting</p>
+      <p class="footer">SettleMate · Make every shared expense feel simple.</p>
     </div>
   </body>
 </html>

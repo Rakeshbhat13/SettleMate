@@ -9,6 +9,7 @@ import java.util.List;
 
 public interface ExpenseRepo extends JpaRepository<ExpenseEntity, Long> {
   List<ExpenseEntity> findByGroupIdOrderByDateDescIdDesc(Long groupId);
+  Optional<ExpenseEntity> findByIdAndGroupId(Long id, Long groupId);
 
   @Modifying
   @Transactional
