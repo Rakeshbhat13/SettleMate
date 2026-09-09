@@ -8,6 +8,8 @@ import com.example.spliteasyweb.model.SplitType;
 import com.example.spliteasyweb.repo.ExpenseRepo;
 import com.example.spliteasyweb.repo.GroupRepo;
 import com.example.spliteasyweb.repo.PersonRepo;
+import com.example.spliteasyweb.repo.SettlementRepo;
+import com.example.spliteasyweb.model.SettlementEntity;
 import com.example.spliteasyweb.service.SettlementService;
 import com.example.spliteasyweb.service.AnalyticsService;
 import jakarta.servlet.http.HttpSession;
@@ -32,14 +34,17 @@ public class GroupController {
     private final ExpenseRepo expenses;
     private final SettlementService settlementService;
     private final AnalyticsService analyticsService;
+    private final SettlementRepo settlements;
 
     public GroupController(GroupRepo groups, PersonRepo people, ExpenseRepo expenses,
-                           SettlementService settlementService, AnalyticsService analyticsService) {
+                           SettlementService settlementService, AnalyticsService analyticsService,
+                           SettlementRepo settlements) {
         this.groups = groups;
         this.people = people;
         this.expenses = expenses;
         this.settlementService = settlementService;
         this.analyticsService = analyticsService;
+        this.settlements = settlements;
     }
 
     // Crear grupo (desde el home)
@@ -90,6 +95,8 @@ public class GroupController {
         var exps = expenses.findByGroupIdOrderByDateDescIdDesc(g.getId());
 
         var balances = settlementService.balances(exps);
+        var history = settlements.findByGroupIdOrderBySettledAtDesc(g.getId());
+        settlementService.applySettlements(balances, history);
         var txs = settlementService.settle(balances);
         var summary = analyticsService.summarize(exps, ppl.size(), g.getBudget());
 
@@ -99,6 +106,7 @@ public class GroupController {
         model.addAttribute("balances", balances);
         model.addAttribute("txs", txs);
         model.addAttribute("summary", summary);
+        model.addAttribute("settlementHistory", history);
         return "group";
     }
 
@@ -176,6 +184,27 @@ public class GroupController {
     public String liquidateExpense(@PathVariable String slug, @PathVariable Long id) {
         GroupEntity g = groups.findBySlug(slug).orElseThrow();
         expenses.findByIdAndGroupId(id, g.getId()).ifPresent(expenses::delete);
+        return "redirect:/g/" + slug;
+    }
+
+    @PostMapping("/g/{slug}/settlements")
+    @Transactional
+    public String recordSettlement(@PathVariable String slug,
+                                   @RequestParam String from,
+                                   @RequestParam String to,
+                                   @RequestParam BigDecimal amount,
+                                   @RequestParam(required = false) String note) {
+        GroupEntity g = groups.findBySlug(slug).orElseThrow();
+        if (amount.signum() <= 0 || from.isBlank() || to.isBlank() || from.equalsIgnoreCase(to)) {
+            return "redirect:/g/" + slug;
+        }
+        SettlementEntity settlement = new SettlementEntity();
+        settlement.setGroupId(g.getId());
+        settlement.setFromPerson(from.trim());
+        settlement.setToPerson(to.trim());
+        settlement.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+        settlement.setNote(note == null ? "" : note.trim());
+        settlements.save(settlement);
         return "redirect:/g/" + slug;
     }
 

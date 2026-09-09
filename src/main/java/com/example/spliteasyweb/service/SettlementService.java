@@ -1,6 +1,7 @@
 package com.example.spliteasyweb.service;
 
 import com.example.spliteasyweb.model.ExpenseEntity;
+import com.example.spliteasyweb.model.SettlementEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -69,6 +70,16 @@ public class SettlementService {
       if (c.amount>m) cred.add(new Entry(c.person(), round(c.amount-m)));
     }
     return out;
+  }
+
+  public void applySettlements(Map<String, Double> balances, List<SettlementEntity> settlements) {
+    for (SettlementEntity settlement : settlements) {
+      double amount = settlement.getAmount() == null ? 0.0 : settlement.getAmount().doubleValue();
+      if (amount <= 0.0) continue;
+      balances.merge(settlement.getFromPerson(), amount, Double::sum);
+      balances.merge(settlement.getToPerson(), -amount, Double::sum);
+    }
+    balances.replaceAll((key, value) -> Math.round(value * 100.0) / 100.0);
   }
 
   public static List<String> parse(String csv){

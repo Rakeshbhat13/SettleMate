@@ -276,13 +276,28 @@
               <ul class="list" th:unless="${#lists.isEmpty(txs)}">
                 <li
                   th:each="t : ${txs}"
-                  th:text="${t.from() + ' → ' + t.to() + ': ₹' + #numbers.formatDecimal(t.amount(),1,2)}"
                 >
-                  leo → ana: ₹123.45
+                  <span th:text="${t.from() + ' → ' + t.to() + ': ₹' + #numbers.formatDecimal(t.amount(),1,2)}">leo → ana: ₹123.45</span>
+                  <form th:action="@{|/g/${g.slug}/settlements|}" method="post" class="inline-form">
+                    <input type="hidden" name="from" th:value="${t.from()}" />
+                    <input type="hidden" name="to" th:value="${t.to()}" />
+                    <input type="hidden" name="amount" th:value="${t.amount()}" />
+                    <button class="btn btn-ok btn-sm" type="submit">Mark settled</button>
+                  </form>
                 </li>
               </ul>
             </div>
           </div>
+        </section>
+
+        <section class="card" th:if="${!settlementHistory.isEmpty()}">
+          <div class="section-heading"><div><p class="eyebrow">HISTORY</p><h2 class="section-title">Completed settlements</h2></div></div>
+          <ul class="list">
+            <li th:each="settlement : ${settlementHistory}">
+              <span th:text="${settlement.fromPerson + ' paid ' + settlement.toPerson + ' ₹' + #numbers.formatDecimal(settlement.amount,1,2)}">Alex paid Sam ₹25.00</span>
+              <small class="history-date" th:text="${settlement.settledAt}">2026-09-09</small>
+            </li>
+          </ul>
         </section>
 
         <section class="card analytics-card" th:if="${!summary.spendingByCategory.isEmpty()}">

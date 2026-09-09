@@ -485,6 +485,8 @@ body {
 .category-list { display: grid; gap: 8px; }
 .category-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-family: "Segoe UI", sans-serif; }
 .category-row strong { color: var(--primary); }
+.inline-form { display: inline-block; margin-left: 10px; }
+.history-date { display: block; margin-top: 4px; color: var(--text-secondary); font: 0.72rem "Segoe UI", sans-serif; }
 .table { box-shadow: none; border-radius: 0; }
 .table thead th { background: transparent; color: var(--text-secondary); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .table tbody td { background: transparent; }
