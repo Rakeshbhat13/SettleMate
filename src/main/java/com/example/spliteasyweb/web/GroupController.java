@@ -92,16 +92,22 @@ public class GroupController {
 
     // Dashboard del grupo
     @GetMapping("/g/{slug}")
-    public String dashboard(@PathVariable String slug, Model model) {
+    public String dashboard(@PathVariable String slug,
+                            @RequestParam(required = false) String search,
+                            @RequestParam(required = false) ExpenseCategory category,
+                            Model model) {
         GroupEntity g = groups.findBySlug(slug).orElseThrow();
         var ppl = people.findByGroupIdOrderByNameAsc(g.getId());
-        var exps = expenses.findByGroupIdOrderByDateDescIdDesc(g.getId());
+        var allExpenses = expenses.findByGroupIdOrderByDateDescIdDesc(g.getId());
+        var exps = allExpenses.stream()
+                .filter(expense -> matchesExpenseFilter(expense, search, category))
+                .toList();
 
         var balances = settlementService.balances(exps);
         var history = settlements.findByGroupIdOrderBySettledAtDesc(g.getId());
         settlementService.applySettlements(balances, history);
         var txs = settlementService.settle(balances);
-        var summary = analyticsService.summarize(exps, ppl.size(), g.getBudget());
+        var summary = analyticsService.summarize(allExpenses, ppl.size(), g.getBudget());
 
         model.addAttribute("g", g);
         model.addAttribute("people", ppl);
@@ -110,6 +116,8 @@ public class GroupController {
         model.addAttribute("txs", txs);
         model.addAttribute("summary", summary);
         model.addAttribute("settlementHistory", history);
+        model.addAttribute("search", search == null ? "" : search);
+        model.addAttribute("selectedCategory", category);
         return "group";
     }
 
@@ -232,19 +240,23 @@ public class GroupController {
 
         StringBuilder sb = new StringBuilder();
         // encabezado
-        sb.append("Fecha,Título,Pagó,Participantes,Monto\n");
+        sb.append("Date,Expense,Category,Paid By,Participants,Amount,Split Type\n");
         for (var e : exps) {
             String date = e.getDate() == null ? "" : e.getDate().toString();
             String title = csv(e.getTitle());
             String payers = csv(csvListPretty(e.getPayersCsv()));
             String participants = csv(csvListPretty(e.getParticipantsCsv()));
             String amount = e.getAmount() == null ? "0.00" : String.format(java.util.Locale.US, "%.2f", e.getAmount());
+                        String category = csv(e.getCategory() == null ? "Other" : e.getCategory().getLabel());
+                        String splitType = e.getSplitType() == null ? "EQUAL" : e.getSplitType().name();
 
             sb.append(date).append(",")
               .append("\"").append(title).append("\",")
+                            .append("\"").append(category).append("\",")
               .append("\"").append(payers).append("\",")
               .append("\"").append(participants).append("\",")
-              .append(amount).append("\n");
+                            .append(amount).append(",")
+                            .append(splitType).append("\n");
         }
 
         return ResponseEntity.ok()
@@ -308,6 +320,15 @@ public class GroupController {
                 .map(String::trim)
                 .filter(x -> !x.isEmpty())
                 .collect(Collectors.joining(", "));
+    }
+
+    private static boolean matchesExpenseFilter(ExpenseEntity expense, String search, ExpenseCategory category) {
+        if (category != null && expense.getCategory() != category) return false;
+        if (search == null || search.isBlank()) return true;
+        String query = norm(search);
+        return norm(expense.getTitle()).contains(query)
+                || norm(expense.getPayersCsv()).contains(query)
+                || norm(expense.getParticipantsCsv()).contains(query);
     }
 
     // Helpers

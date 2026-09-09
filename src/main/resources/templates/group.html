@@ -196,6 +196,17 @@
         <!-- Expenses -->
         <section class="card" style="margin-top: 16px">
           <div class="section-heading"><div><p class="eyebrow">LEDGER</p><h2 class="section-title">Recent expenses</h2></div><a class="link" th:href="@{|/g/${g.slug}/export/expenses.csv|}">Download CSV →</a></div>
+          <form class="filter-bar" method="get" th:action="@{|/g/${g.slug}|}">
+            <input name="search" th:value="${search}" placeholder="Search expense or member" />
+            <select name="category">
+              <option value="">All categories</option>
+              <option th:each="option : ${T(com.example.spliteasyweb.model.ExpenseCategory).values()}"
+                      th:value="${option}" th:text="${option.label}"
+                      th:selected="${option == selectedCategory}">Food</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" type="submit">Filter</button>
+            <a class="link" th:href="@{|/g/${g.slug}|}">Clear</a>
+          </form>
           <div th:if="${#lists.isEmpty(expenses)}">No expenses recorded.</div>
           <div th:unless="${#lists.isEmpty(expenses)}">
             <table class="table">

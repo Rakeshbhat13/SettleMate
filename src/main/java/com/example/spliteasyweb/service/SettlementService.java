@@ -10,6 +10,12 @@ import java.math.BigDecimal;
 @Service
 public class SettlementService {
 
+  private final SettlementOptimizer optimizer;
+
+  public SettlementService(SettlementOptimizer optimizer) {
+    this.optimizer = optimizer;
+  }
+
   public Map<String, Double> balances(List<ExpenseEntity> expenses){
     Map<String, Double> bal = new HashMap<>();
 
@@ -55,24 +61,11 @@ public class SettlementService {
   private record Entry(String person, double amount){}
 
   public List<Transfer> settle(Map<String, Double> bal){
-    PriorityQueue<Entry> debt = new PriorityQueue<>(Comparator.comparingDouble(e->e.amount));
-    PriorityQueue<Entry> cred = new PriorityQueue<>((a,b)->Double.compare(b.amount,a.amount));
-
-    for (var e: bal.entrySet()){
-      double v=e.getValue();
-      if (v<-0.01) debt.add(new Entry(e.getKey(), -v));
-      else if (v>0.01) cred.add(new Entry(e.getKey(), v));
-    }
-
-    List<Transfer> out=new ArrayList<>();
-    while(!debt.isEmpty() && !cred.isEmpty()){
-      var d=debt.poll(); var c=cred.poll();
-      double m=Math.min(d.amount,c.amount); m=round(m);
-      out.add(new Transfer(d.person(), c.person(), m));
-      if (d.amount>m) debt.add(new Entry(d.person(), round(d.amount-m)));
-      if (c.amount>m) cred.add(new Entry(c.person(), round(c.amount-m)));
-    }
-    return out;
+    Map<String, BigDecimal> exactBalances = new TreeMap<>();
+    bal.forEach((person, amount) -> exactBalances.put(person, BigDecimal.valueOf(amount == null ? 0.0 : amount)));
+    return optimizer.optimize(exactBalances).stream()
+        .map(t -> new Transfer(t.from(), t.to(), t.amount().doubleValue()))
+        .toList();
   }
 
   public void applySettlements(Map<String, Double> balances, List<SettlementEntity> settlements) {
