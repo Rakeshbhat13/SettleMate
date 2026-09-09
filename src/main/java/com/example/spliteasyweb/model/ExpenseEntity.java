@@ -42,6 +42,9 @@ public class ExpenseEntity {
     @Column(name = "split_type", nullable = false, length = 32)
     private SplitType splitType = SplitType.EQUAL;
 
+    @Column(name = "split_allocations", nullable = false, length = 2000)
+    private String splitAllocations = "";
+
     // --- getters/setters ---
 
     public Long getId() { return id; }
@@ -70,4 +73,7 @@ public class ExpenseEntity {
 
     public SplitType getSplitType() { return splitType; }
     public void setSplitType(SplitType splitType) { this.splitType = splitType == null ? SplitType.EQUAL : splitType; }
+
+    public String getSplitAllocations() { return splitAllocations; }
+    public void setSplitAllocations(String splitAllocations) { this.splitAllocations = splitAllocations == null ? "" : splitAllocations; }
 }

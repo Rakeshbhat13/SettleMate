@@ -5,6 +5,7 @@ import com.example.spliteasyweb.model.SettlementEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.math.BigDecimal;
 
 @Service
 public class SettlementService {
@@ -37,9 +38,11 @@ public class SettlementService {
         bal.merge(payer, sharePerPayer, Double::sum);
       }
 
-      // débito a cada participante
+      // Debit each participant using explicit allocations when present.
+      Map<String, Double> allocations = parseAllocations(e.getSplitAllocations());
       for (String p: parts) {
-        bal.merge(p, -sharePerPart, Double::sum);
+        double share = allocations.getOrDefault(p, sharePerPart);
+        bal.merge(p, -share, Double::sum);
       }
     }
 
@@ -94,6 +97,21 @@ public class SettlementService {
 
   public static String join(List<String> list){
     return String.join(",", list);
+  }
+
+  private static Map<String, Double> parseAllocations(String encoded) {
+    if (encoded == null || encoded.isBlank()) return Map.of();
+    Map<String, Double> allocations = new HashMap<>();
+    for (String item : encoded.split(",")) {
+      String[] pair = item.split("=", 2);
+      if (pair.length != 2) continue;
+      try {
+        allocations.put(pair[0], new BigDecimal(pair[1]).doubleValue());
+      } catch (NumberFormatException ignored) {
+        // Invalid legacy allocation falls back to equal splitting.
+      }
+    }
+    return allocations;
   }
 
   private double round(double x){ return Math.round(x*100.0)/100.0; }

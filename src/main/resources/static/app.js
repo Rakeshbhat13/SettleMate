@@ -62,9 +62,23 @@ function completeMultiWithTab(input) {
     const expenseForm = document.getElementById('expenseForm');
     const payersInput = document.getElementById('payersInput');
     const participantsInput = document.getElementById('participantsInput');
+    const splitType = document.getElementById('splitType');
+    const allocationValues = document.getElementById('allocationValues');
 
     completeMultiWithTab(payersInput);
     completeMultiWithTab(participantsInput);
+
+    function updateAllocationField() {
+        if (!splitType || !allocationValues) return;
+        const needsAllocations = splitType.value !== 'EQUAL';
+        allocationValues.style.display = needsAllocations ? 'block' : 'none';
+        allocationValues.required = needsAllocations;
+        allocationValues.placeholder = splitType.value === 'PERCENTAGE'
+            ? 'Percentages in participant order (40,30,20,10)'
+            : 'Exact amounts in participant order (300,250,250,200)';
+    }
+    splitType?.addEventListener('change', updateAllocationField);
+    updateAllocationField();
 
     const btnAll = document.getElementById('btnAll');
     const btnNone = document.getElementById('btnNone');

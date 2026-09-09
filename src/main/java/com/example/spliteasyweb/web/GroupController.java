@@ -12,6 +12,7 @@ import com.example.spliteasyweb.repo.SettlementRepo;
 import com.example.spliteasyweb.model.SettlementEntity;
 import com.example.spliteasyweb.service.SettlementService;
 import com.example.spliteasyweb.service.AnalyticsService;
+import com.example.spliteasyweb.service.SplitCalculator;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -35,16 +36,18 @@ public class GroupController {
     private final SettlementService settlementService;
     private final AnalyticsService analyticsService;
     private final SettlementRepo settlements;
+    private final SplitCalculator splitCalculator;
 
     public GroupController(GroupRepo groups, PersonRepo people, ExpenseRepo expenses,
                            SettlementService settlementService, AnalyticsService analyticsService,
-                           SettlementRepo settlements) {
+                           SettlementRepo settlements, SplitCalculator splitCalculator) {
         this.groups = groups;
         this.people = people;
         this.expenses = expenses;
         this.settlementService = settlementService;
         this.analyticsService = analyticsService;
         this.settlements = settlements;
+        this.splitCalculator = splitCalculator;
     }
 
     // Crear grupo (desde el home)
@@ -148,7 +151,8 @@ public class GroupController {
                              @RequestParam(name = "payers", required = false) String payersCsvRaw,
                              @RequestParam(name = "participants", required = false) List<String> participantsList,
                              @RequestParam(name = "category", required = false) ExpenseCategory category,
-                             @RequestParam(name = "splitType", required = false) SplitType splitType) {
+                             @RequestParam(name = "splitType", required = false) SplitType splitType,
+                             @RequestParam(name = "allocationValues", required = false) String allocationValues) {
         GroupEntity g = groups.findBySlug(slug).orElseThrow();
 
         var ppl = people.findByGroupIdOrderByNameAsc(g.getId());
@@ -166,6 +170,16 @@ public class GroupController {
         e.setSplitType(splitType);
         e.setParticipantsCsv(joinUniqueCanonical(participantsCsv, canon));
         e.setPayersCsv(joinUniqueCanonical(payersCsv, canon));
+
+        List<String> canonicalParticipants = SettlementService.parse(e.getParticipantsCsv());
+        try {
+            Map<String, BigDecimal> allocations = parseAllocationValues(allocationValues, canonicalParticipants);
+            Map<String, BigDecimal> calculated = splitCalculator.calculate(
+                    e.getAmount(), canonicalParticipants, e.getSplitType(), allocations);
+            e.setSplitAllocations(encodeAllocations(calculated));
+        } catch (IllegalArgumentException ex) {
+            return "redirect:/g/" + slug;
+        }
 
         expenses.save(e);
         return "redirect:/g/" + slug;
@@ -343,5 +357,28 @@ public class GroupController {
         } catch (Exception ex) {
             return BigDecimal.ZERO;
         }
+    }
+
+    private static Map<String, BigDecimal> parseAllocationValues(String raw, List<String> participants) {
+        if (raw == null || raw.isBlank()) return Map.of();
+        String[] values = raw.split(",", -1);
+        if (values.length != participants.size()) {
+            throw new IllegalArgumentException("One allocation is required per participant");
+        }
+        Map<String, BigDecimal> allocations = new LinkedHashMap<>();
+        for (int index = 0; index < participants.size(); index++) {
+            try {
+                allocations.put(participants.get(index), new BigDecimal(values[index].trim().replace(',', '.')));
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Invalid allocation");
+            }
+        }
+        return allocations;
+    }
+
+    private static String encodeAllocations(Map<String, BigDecimal> allocations) {
+        return allocations.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue().toPlainString())
+                .collect(Collectors.joining(","));
     }
 }
