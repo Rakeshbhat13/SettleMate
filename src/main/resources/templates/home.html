@@ -1,50 +1,67 @@
-<!doctype html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Mis grupos — SplitEasy</title>
-  <link rel="stylesheet" th:href="@{/styles.css}">
-</head>
-<body>
-<div class="container">
-  <header class="header">
-    <div class="brand">
-      <a href="/" class="logo" title="Inicio" style="display:block"></a>
-      <div>
-        <h1>Mis grupos</h1>
-        <small>Tu espacio personal (por sesión)</small>
-      </div>
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>My Groups — SplitEasy</title>
+    <link rel="stylesheet" th:href="@{/styles.css}" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <div class="brand">
+          <a href="/" class="logo" title="Home"></a>
+          <div>
+            <h1>SplitEasy</h1>
+            <small>Split expenses with friends</small>
+          </div>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2 class="section-title">Create Group</h2>
+        <form action="/groups" method="post" class="row">
+          <input
+            name="name"
+            placeholder="Enter group name"
+            required
+            style="flex: 1"
+          />
+          <button class="btn">Create</button>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top: 16px">
+        <h2 class="section-title">Your Groups</h2>
+        <div th:if="${#lists.isEmpty(groups)}">
+          You haven't created any groups yet.
+        </div>
+        <div th:unless="${#lists.isEmpty(groups)}">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="g : ${groups}">
+                <td th:text="${g.name}">Grupo</td>
+                <td>
+                  <a
+                    class="link"
+                    th:href="@{|/g/${g.slug}|}"
+                    th:text="@{|/g/${g.slug}|}"
+                    >/g/abc</a
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p class="footer">SplitEasy - Simple expense splitting</p>
     </div>
-  </header>
-
-  <section class="card">
-    <h2 class="section-title">Crear un grupo</h2>
-    <form action="/groups" method="post" class="row">
-      <input name="name" placeholder="Nombre del grupo" required>
-      <button class="btn">Crear</button>
-    </form>
-  </section>
-
-  <section class="card" style="margin-top:16px">
-    <h2 class="section-title">Tus grupos</h2>
-    <div th:if="${#lists.isEmpty(groups)}">Todavía no creaste grupos.</div>
-    <div th:unless="${#lists.isEmpty(groups)}">
-      <table class="table">
-        <thead><tr><th>Nombre</th><th>Link</th></tr></thead>
-        <tbody>
-        <tr th:each="g : ${groups}">
-          <td th:text="${g.name}">Grupo</td>
-          <td>
-            <a class="link" th:href="@{|/g/${g.slug}|}" th:text="@{|/g/${g.slug}|}">/g/abc</a>
-          </td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <p class="footer">Hecho con ❤️ por cotibodereau</p>
-</div>
-</body>
+  </body>
 </html>
